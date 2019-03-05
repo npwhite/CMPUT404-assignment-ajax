@@ -22,8 +22,11 @@
 
 
 import flask
-from flask import Flask, request
+from flask import Flask, request, redirect, make_response, render_template
 import json
+from flask import jsonify
+import random
+import string
 app = Flask(__name__)
 app.debug = True
 
@@ -54,10 +57,18 @@ class World:
     def world(self):
         return self.space
 
+
+def generate_random_word(n):
+    word = ''
+    for i in range(n):
+        word += random.choice(string.ascii_letters)
+    return word
+
 # you can test your webservice from the commandline
 # curl -v   -H "Content-Type: application/json" -X PUT http://127.0.0.1:5000/entity/X -d '{"x":1,"y":1}'
 
 myWorld = World()
+connected_users = []
 
 # I give this to you, this is how you get the raw body/data portion of a post in flask
 # this should come with flask but whatever, it's not my project.
@@ -74,36 +85,45 @@ def flask_post_json():
 @app.route("/")
 def hello():
     '''Return something coherent here.. perhaps redirect to /static/index.html '''
-    return None
+    response = make_response(redirect("/static/index.html", code=301))
+    return response
+
 
 @app.route("/entity/<entity>", methods=['POST','PUT'])
 def update(entity):
     '''update the entities via this interface'''
+    # userID = request.cookies.get('userID')
     if request.method == "POST":
-        # post a new entitiy
+        # update an entity
         myWorld.set(entity, flask_post_json())
+        return jsonify(myWorld.get(entity))
 
     elif request.method == "PUT":
-        # update an entity
+        # post a new entitiy
+        myWorld.set(entity, flask_post_json())
+        return jsonify(myWorld.get(entity))
 
+    else:
+        return "METHOD NOT SUPPORTED"
 
-
-    return None
-
+# GET http://127.0.0.1:5000/world
 @app.route("/world", methods=['POST','GET'])
 def world():
     '''you should probably return the world here'''
-    return None
+    return jsonify(myWorld.space)
+    # return '{"name":"nick"}'
 
+# curl -v http://127.0.0.1:5000/entity/X
 @app.route("/entity/<entity>")
 def get_entity(entity):
     '''This is the GET version of the entity interface, return a representation of the entity'''
-    return None
+    return jsonify(myWorld.get(entity))
 
 @app.route("/clear", methods=['POST','GET'])
 def clear():
     '''Clear the world out!'''
-    return None
+    myWorld.clear()
+    return jsonify(myWorld.space)
 
 if __name__ == "__main__":
     app.run()
